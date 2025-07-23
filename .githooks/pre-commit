@@ -1,0 +1,45 @@
+#!/bin/bash
+
+# Check for staged JavaScript/TypeScript files
+STAGED_JS_FILES=$(git diff --cached --name-only --diff-filter=d | grep -E '\.(js|jsx|ts|tsx|vue)$')
+
+if [ -n "$STAGED_JS_FILES" ]; then
+    echo "Running npm format for code style corrections ..."
+    echo "$STAGED_JS_FILES" | xargs npm run format
+
+    echo "$STAGED_JS_FILES" | xargs git add
+
+    echo "Running npm lint ..."
+    echo "$STAGED_JS_FILES" | xargs npm run lint
+    if [ $? -ne 0 ]; then
+        echo "npm lint failed. Commit aborted."
+        exit 1
+    fi
+fi
+
+# Check for staged PHP files
+STAGED_PHP_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.php$')
+
+if [ -n "$STAGED_PHP_FILES" ]; then
+    echo "Running Rector for auto refactors"
+    echo "$STAGED_PHP_FILES" | xargs ./vendor/bin/rector process
+
+    echo "Running Pint for code style corrections ..."
+    echo "$STAGED_PHP_FILES" | xargs ./vendor/bin/pint
+
+    echo "$STAGED_PHP_FILES" | xargs git add
+
+    echo "Running PHPStan analysis ..."
+    NON_TEST_FILES=$(echo "$STAGED_PHP_FILES" | grep -v "^tests/")
+    if [ -n "$NON_TEST_FILES" ]; then
+        echo "$NON_TEST_FILES" | xargs composer phpstan
+        if [ $? -ne 0 ]; then
+            echo "PHPStan analysis failed. Commit aborted."
+            exit 1
+        fi
+    else
+        echo "No non-test PHP files to analyze with PHPStan."
+    fi
+fi
+
+echo "Pre-commit checks passed."

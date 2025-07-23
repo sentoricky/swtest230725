@@ -1,0 +1,18 @@
+includes:
+    - ./vendor/larastan/larastan/extension.neon
+
+parameters:
+
+    paths:
+        - app
+        - routes
+
+    # The level 9 is the highest level
+    level: 5
+
+    ignoreErrors:
+        - '#Access to an undefined property#'
+        - identifier: missingType.iterableValue
+    excludePaths:
+
+    treatPhpDocTypesAsCertain: false
